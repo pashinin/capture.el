@@ -3,6 +3,11 @@
 
 It is an Emacs extension to record video from dekstop.
 
+## Install
+
+    # some programs:
+    sudo apt-get install libav-tools
+
 ## Configuration
 
     (require 'capture)

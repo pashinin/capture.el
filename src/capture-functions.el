@@ -4,6 +4,13 @@
 
 (require 'capture-helpers)
 
+(defun capture-have-avconv ()
+  "Do we have we avconv installed?"
+  (interactive)
+  (or (file-exists-p "/bin/avconv")
+      (file-exists-p "/usr/local/bin/avconv")
+      (file-exists-p "/usr/bin/avconv")))
+
 (defun capture-gen-avconv-audio-part (audio)
   "Return avconv cmd part based on AUDIO list."
   (interactive)
@@ -108,6 +115,8 @@ Based on a preset under the cursor."
 (defun capture-start ()
   "Run capture process with settings in `capture-preset-current'."
   (interactive)
+  (if (not (capture-have-avconv))
+      (error "avconv is not installed!"))
   (if (not (file-directory-p capture-video-dest-dir))
       (error (concat "Destination dir doesn't exist: " capture-video-dest-dir)))
   (if (fboundp 'capture-before-capture)
