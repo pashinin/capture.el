@@ -18,7 +18,7 @@
   :group 'capture-vars)
 
 (defcustom capture-video-dest-dir
-  "~/Videos" "Where to move your files when you're done.."
+  "~/Videos/" "Where to move your files when you're done.."
   :group 'capture-vars)
 
 (defcustom capture-background-path
