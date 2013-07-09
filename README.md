@@ -28,3 +28,17 @@ Optional parameters:
     "854px (webcam mic)"  - title of our preset
     (list "Webcam C270 Analog Mono") - list of audio devices to record
     (concat capture-background-path my-854-wallpaper) - wallpaper to set
+
+You can also write some triggers:
+
+    (defun capture-before-capture ()
+      "Run this function before starting capturing."
+      (interactive)
+      ;;(suspend-frame)
+      )
+
+    (defun capture-after-capture ()
+      "Run this function after we stopped capturing video."
+      (interactive)
+      (set-desktop-background
+       (concat capture-background-path my-default-wallpaper)))
