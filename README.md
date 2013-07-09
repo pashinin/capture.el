@@ -56,3 +56,12 @@ or (for example):
 
     super+f12
     (global-set-key (kbd "<s-f12>") 'capture-run-mode)
+
+## Useful keys
+
+`g` - update buffer
+
+When on audio string:
+
+`w` - copy device title (`Built-in Audio Analog Stereo`)
+`W` - copy device name (`alsa_input.pci-0000_00_1b.0.analog-stereo`)
