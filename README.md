@@ -64,4 +64,5 @@ or (for example):
 When on audio string:
 
 `w` - copy device title (`Built-in Audio Analog Stereo`)
+
 `W` - copy device name (`alsa_input.pci-0000_00_1b.0.analog-stereo`)
