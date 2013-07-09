@@ -7,6 +7,9 @@ It is an Emacs extension to record video from dekstop.
 
     (require 'capture)
 
+    (setq capture-video-dest-dir "~/screencasts/SORT/")
+    (global-set-key (kbd "<s-f12>") 'capture-run-mode)
+
     (defun my-capture-presets ()
       "Make my presets for capturing."
       (interactive)
@@ -42,3 +45,14 @@ You can also write some triggers:
       (interactive)
       (set-desktop-background
        (concat capture-background-path my-default-wallpaper)))
+
+## Run
+
+Run it with:
+
+    M-x capture-mode
+
+or (for example):
+
+    super+f12
+    (global-set-key (kbd "<s-f12>") 'capture-run-mode)
