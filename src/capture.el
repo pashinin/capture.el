@@ -1,4 +1,4 @@
-;;; capture --- easy screencasting
+;;; capture.el --- easy screencasting using the avconv program
 ;;
 ;; Copyright (C) 2013 Sergey Pashinin
 ;; Author: Sergey Pashinin <sergey at pashinin dot com>
