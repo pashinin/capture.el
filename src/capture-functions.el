@@ -5,22 +5,44 @@
 (require 'capture-helpers)
 
 (defun capture-have-avconv ()
-  "Do we have we avconv installed?"
+  "Return t if avconv is installed."
   (interactive)
   (or (file-exists-p "/bin/avconv")
       (file-exists-p "/usr/local/bin/avconv")
       (file-exists-p "/usr/bin/avconv")))
 
+(defun capture-have-ffmpeg ()
+  "Return t if ffmpeg is installed."
+  (interactive)
+  (if (eq system-type 'windows-nt)
+      (file-exists-p (car (split-string (shell-command-to-string "where ffmpeg"))))
+    (or (file-exists-p "/bin/ffmpeg")
+        (file-exists-p "/usr/local/bin/ffmpeg")
+        (file-exists-p "/usr/bin/ffmpeg"))))
+;; (capture-have-ffmpeg)
+
+(defun capture-warning-no-program ()
+  "Return t if no ffmpeg or avconv was found."
+  (interactive)
+  (if (eq system-type 'windows-nt)
+      (not (capture-have-ffmpeg))
+    (and (not (capture-have-avconv))
+         (not (capture-have-ffmpeg)))
+  ))
+
 (defun capture-gen-avconv-audio-part (audio)
-  "Return avconv cmd part based on AUDIO list."
+  "Return avconv (ffmpeg) cmd part based on AUDIO list."
   (interactive)
   (if audio
-      (let (res)
-        (setq res "")
+      (let ((res ""))
         (dolist (element audio res)
           ;;(concat "-i " (capture-get-audio-name-by-title (car audio)) " ")
-          (setq res
-                (concat res " -f pulse -i " (capture-get-audio-name-by-title element) " ")))
+          ;; -f dshow -i audio="Stereo Mix (Realtek High Defini"
+          ;; :audio="Microphone Array (IDT High Defi"
+          (if (eq system-type 'windows-nt)
+              (setq res (concat res ":audio=\"Microphone (Realtek High Defini\" "))
+            (setq res (concat res " -f pulse -i " (capture-get-audio-name-by-title element) " ")))
+          )
         (if (> (length audio) 1)
             (setq res (concat res " -filter_complex amix=inputs="
                               (number-to-string (length audio)) ":duration=first:dropout_transition=3"))
@@ -35,7 +57,7 @@ FPS  - frames per second,
 FILENAME - temp filename to save video,
 AUDIO - a list of audio devices."
   (interactive)
-  (if t
+  (if (not (eq system-type 'windows-nt))
       (concat "avconv "
               (capture-gen-avconv-audio-part audio)
               " -show_region 1"
@@ -47,7 +69,21 @@ AUDIO - a list of audio devices."
               " -b 8500000 "
               " -bt 8000000"
               " -preset ultrafast -threads 4"
-              " -y " filename)))
+              " -y " filename)
+    (progn
+      ;; -loglevel quiet
+      ;; -show_region 1   ; no such option on windows
+      (concat "ffmpeg -f dshow -i video=\"screen-capture-recorder\""
+              (capture-gen-avconv-audio-part audio)
+              " -r " (number-to-string fps)
+              " -s " (number-to-string w) "x" (number-to-string h)
+              ;;" -i :0.0+" (number-to-string x) "," (number-to-string y) " "
+              ;;" --crf 22"
+              " -rtbufsize 500000"
+              " -q 1"
+              " -preset ultrafast -threads 4"
+              " "
+              filename))))
 ;; (capture-gen-cmd 0 0 100 100 15 "asd" (list "SB X-Fi Analog Mono"))
 
 (defun capture-filename (preset)
@@ -56,7 +92,7 @@ AUDIO - a list of audio devices."
   (let (fname
         (ext (nth 5 preset)))
     (setq fname (concat capture-video-temp-dir "capture_"
-                        (format-time-string "%d_%b_%Y_%H_%M_%S" (current-time)) "."
+                        (format-time-string "%Y_%m_%d_%H_%M_%S" (current-time)) "."
                         ext))))
 ;; (capture-filename capture-preset-current)
 
@@ -102,20 +138,10 @@ Based on a preset under the cursor."
     (setq num (- (string-to-number num) 1))
     (setq preset (nth num capture-presets)))))
 
-;;(defun capture-before-capture ()
-;;  "Run this function before starting capturing."
-;;  (interactive)
-;;  ;;(suspend-frame)
-;;  )
-;;
-;;(defun capture-after-capture ()
-;;  "Run this function after stopping capturing video."
-;;  (interactive))
-
 (defun capture-start ()
   "Run capture process with settings in `capture-preset-current'."
   (interactive)
-  (if (not (capture-have-avconv))
+  (if (capture-warning-no-program)
       (error "avconv is not installed!"))
   (if (not (file-directory-p capture-video-dest-dir))
       (error (concat "Destination dir doesn't exist: " capture-video-dest-dir)))
@@ -143,42 +169,47 @@ EXT  - filename extension (\"webm\")"
   (interactive)
   (add-to-list 'capture-presets (list x y w h fps ext title audio wallpaper)))
 
-(defun capture-get-processes ()
-  "Get list of commands of running \"avconv\" processes."
-  (interactive)
-  (let ((cmds
-         (shell-command-to-string "ps -o command -C avconv")))
-    (if (> (length cmds) 2)
-        (butlast (cdr (split-string cmds "\n")) 1)
-      (list))))
-;; (capture-get-processes)
+(defun capture-chomp (str)
+  "Chomp leading and tailing symbols from STR."
+  (while (string-match "\\`\n+\\|^\\s-+\\|\\s-+$\\|\n+\\'"
+                       str)
+    (setq str (replace-match "" t t str)))
+  str)
 
-;;(defun capture-get-frames-processes ()
-;;  "Get list of commands of border frames."
-;;  (interactive)
-;;  (let ((cmds
-;;         (shell-command-to-string "ps -o pid -o command -C python3")))
-;;    (if (> (length cmds) 2)
-;;        (butlast (cdr (split-string cmds "\n")) 1)
-;;      (list))))
-;; (capture-get-frames-processes)
+(defun capture-get-processes ()
+  "Get list of commands of running \"avconv\" (ffmpeg) processes."
+  (interactive)
+  (let ((cmd "ps -o command -C avconv") cmds extracted res)
+    (if (eq system-type 'windows-nt)
+        ;;(setq cmd "tasklist /fi \"imagename eq ffmpeg.exe\""))
+        (setq cmd "WMIC path win32_process where name=\"ffmpeg.exe\" get Caption,Processid,Commandline"))
+    (setq cmds (shell-command-to-string cmd))
+    (if (eq system-type 'windows-nt)
+        (setq extracted (butlast (cdr (split-string cmds "\r\n")) 2))
+      (if (> (length cmds) 2)
+          (setq extracted (butlast (cdr (split-string cmds "\n")) 1))
+        nil))
+    (delete "" extracted)
+    ))
+;; (capture-get-processes)
 
 (defun capture-get-processes-files ()
   "Get list of files that avconv is writing to."
   (interactive)
   (let ((processes (capture-get-processes))
-  ;;(let ((processes (list "avconv  -f pulse -i alsa_input.usb-046d_0825_F4CCEA20-02-U0x46d0x825.analog-mono  -show_region 1 -f x11grab  -r 15 -s 854x480 -i :0.0+524,333  -q 1  -b 8500000  -bt 8000000 -preset ultrafast -threads 4 -y /tmp/capture_10_Jul_2013_00_25_26.webm"))
-        files
-        res)
+        ;;(let ((processes (list "avconv  -f pulse -i alsa_input.usb-046d_0825_F4CCEA20-02-U0x46d0x825.analog-mono  -show_region 1 -f x11grab  -r 15 -s 854x480 -i :0.0+524,333  -q 1  -b 8500000  -bt 8000000 -preset ultrafast -threads 4 -y /tmp/capture_10_Jul_2013_00_25_26.webm"))
+        files res)
     (setq res (list))
     (dolist (element processes res)
       ;;(concat "-i " (capture-get-audio-name-by-title (car audio)) " ")
-      (setq res (append res (last (split-string element " "))))
+      (if (eq system-type 'windows-nt)
+          (setq res (append res (last (butlast (split-string (capture-chomp element) " ") 2))))
+        (setq res (append res (last (split-string element " ")))))
   )))
 ;; (capture-get-processes-files)
 
 (defun capture-make-dst-filename (src)
-  "Return dst-filename from SRC-filename."
+  "Return dst-filename from captured SRC-filename."
   (interactive)
   (let (f)
     (setq f (concat capture-video-dest-dir
@@ -208,10 +239,20 @@ EXT  - filename extension (\"webm\")"
   (let ((processes (capture-get-processes))
         files)
     (setq files (capture-get-processes-files))
-    (capture-run-daemonized-command-no-buf
-     "killall -q -INT -w avconv")
+
+    (if (eq system-type 'windows-nt)
+        (progn
+          (shell-command "taskkill /IM ffmpeg.exe")
+          ;;(shell-command "tskill ffmpeg")
+          ;;(shell-command "process -k ffmpeg.exe")
+          ;;(interrupt-proces
+          )
+      (capture-run-daemonized-command-no-buf
+       "killall -q -INT -w avconv"))
+
     (if (fboundp 'capture-after-capture)
         (capture-after-capture))
+    (sleep-for 1)
     (capture-move-files files)
     ))
 ;; (capture-stop-all)

@@ -15,9 +15,15 @@
 That will continue to work even after you kill Emacs.
 BUF - for `async-shell-command'."
   (save-window-excursion
-    (if buf
-        (async-shell-command (concat "nohup " cmd " >/dev/null 2>&1") buf)
-      (async-shell-command (concat "nohup " cmd " >/dev/null 2>&1")))))
+    (if (eq system-type 'windows-nt)
+        ;; http://stackoverflow.com/questions/154075/using-the-dos-start-command-with-parameters-passed-to-the-started-program
+        ;;(async-shell-command (concat "start /b " cmd))
+        (async-shell-command (concat "start " cmd " "))
+      (if buf
+          (async-shell-command (concat "nohup " cmd " >/dev/null 2>&1") buf)
+        (async-shell-command (concat "nohup " cmd " >/dev/null 2>&1"))))))
+;; (async-shell-command "start ffmpeg -f dshow -i video=\"screen-capture-recorder\" d:\\screencasts\\output3.webm")
+;; (async-shell-command "start /b ffmpeg -f dshow -i video=\"screen-capture-recorder\" d:\\screencasts\\output3.webm")
 
 (defun capture-run-daemonized-command-no-buf (cmd)
   "Run a shell command CMD deatached from process.
@@ -40,9 +46,18 @@ Do not show any buffers."
 (defun capture-get-audio-devices-helper ()
   "Return an output of \"pactl list\" command."
   (interactive)
-  (let ((cmd "pactl list | awk '/^Source .*/{f=1}f;/Description/{f=0}' | awk '/Name/{f=1}f;/Desc/{f=0}' | awk '{ sub(/^[ \t]+(Name|Description): /, \"\"); print }'"))
-    ;;pactl list | grep "Source #"
-    (shell-command-to-string cmd)))
+  (if (eq system-type 'windows-nt)
+      (let ((cmd "ffmpeg -list_devices true -f dshow -i dummy") p1 p2)
+        (with-temp-buffer
+          (insert (shell-command-to-string cmd))
+          (goto-char (point-max))
+          (while (not (looking-at "audio devices")) (backward-char))
+          (while (not (looking-at "\n")) (forward-char))
+          (substring (buffer-string) (point) -1)))
+      (let ((cmd "pactl list | awk '/^Source .*/{f=1}f;/Description/{f=0}' | awk '/Name/{f=1}f;/Desc/{f=0}' | awk '{ sub(/^[ \t]+(Name|Description): /, \"\"); print }'"))
+        ;;pactl list | grep "Source #"
+        (shell-command-to-string cmd)))
+  )
 ;; (capture-get-audio-devices-helper)
 
 
@@ -56,36 +71,37 @@ Use FORCE to update the list of devices."
   (if (or force
           (and (= (length capture-audio-speakers) 0)
                (= (length capture-audio-microphones) 0)))
-      (let ((pyfile (concat (file-name-directory (locate-library "capture"))
-                            "listaudio.py"))
-            devices)
-        ;;(setq devices (split-string (shell-command-to-string pyfile) "---"))
-        (setq devices (split-string (capture-get-audio-devices-helper) "\n"))
-
+      (let (devices (index 0) devname title)
+        (if (eq system-type 'windows-nt)
+            (setq devices (butlast (split-string (capture-get-audio-devices-helper) "\n") 1))
+          (setq devices (split-string (capture-get-audio-devices-helper) "\n")))
         (setq capture-audio-speakers nil)
         (setq capture-audio-microphones nil)
-
-        (let ((index 0) devname title)
-              (dolist (element devices)
-                (if (= (% index 2) 1)
-                    (progn
-                      (setq title element)
-                      (if (string/starts-with title "Monitor")
-                          (setq capture-audio-speakers
-                                (append capture-audio-speakers (list devname title)))
-                        (setq capture-audio-microphones
-                              (append capture-audio-microphones (list devname title)))))
-                  (setq devname element))
-                (setq index (+ index 1))))
-        ;;(setq capture-audio-speakers
-        ;;      (nbutlast (split-string (car devices) "\n") 1))
-        ;;(setq capture-audio-microphones
-        ;;      (cdr (nbutlast (split-string (car (cdr devices)) "\n") 1))))))
-        )))
+        (dolist (element devices)
+          (if (eq system-type 'windows-nt)
+              (let (el)
+                (setq el (with-temp-buffer
+                           (insert element)
+                           (goto-char (point-max))
+                           (while (not (looking-at "\"")) (backward-char))
+                           (backward-char)
+                           (while (not (looking-at "\"")) (backward-char))
+                           (substring (buffer-string) (point) -1)))
+                (setq capture-audio-microphones
+                      (append capture-audio-microphones (list el el))))
+            (if (= (% index 2) 1)
+                (progn
+                  (setq title element)
+                  (if (string/starts-with title "Monitor")
+                      (setq capture-audio-speakers
+                            (append capture-audio-speakers (list devname title)))
+                    (setq capture-audio-microphones
+                          (append capture-audio-microphones (list devname title)))))
+              (setq devname element)))
+          (setq index (+ index 1))))
+    )
+  (append capture-audio-speakers capture-audio-microphones))
 ;; (capture-get-audio-devices t)
-;; (shell-command-to-string (concat (file-name-directory (locate-library "capture")) "listaudio.py"))
-;; capture-audio-speakers
-;; capture-audio-microphones
 
 (defun capture-get-audio-name-by-title (title)
   "Return audio device system name by TITLE."
