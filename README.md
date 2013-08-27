@@ -19,25 +19,26 @@ It is an Emacs extension to record video from dekstop.
       "Make my presets for capturing."
       (interactive)
       (capture-presets-clear)
-      (capture-add-preset 524 333 854 480 15 "webm" "854px (webcam mic)"
-                          (list "Webcam C270 Analog Mono")
-                          (concat capture-background-path my-854-wallpaper)))
+      (capture-add-preset 454 74 1280 720 15 "webm"
+                          ""
+                          "1280px (no audio)"))
     (my-capture-presets)
 
 Where:
 
-    524, 333              - x and y offset
-    854, 480              - width and height of the video
+    454, 74               - x and y offset
+    1280, 720             - width and height of the video
     15                    - frames per second
     "webm"                - extension for a filename
 
 Optional parameters:
 
-    "854px (webcam mic)"  - title of our preset
+    ""                    - additional arguments for ffmpeg
+    "1280px (no audio)"   - preset title
     (list "Webcam C270 Analog Mono") - list of audio devices to record
     (concat capture-background-path my-854-wallpaper) - wallpaper to set
 
-You can also write some triggers:
+You can also define some triggers:
 
     (defun capture-before-capture ()
       "Run this function before starting capturing."

@@ -118,8 +118,8 @@
         (w (nth 2 preset))
         (h (nth 3 preset))
         (fps (nth 4 preset))
-        (title (nth 6 preset))
-        (audio (nth 7 preset)))
+        (title (nth 7 preset))
+        (audio (nth 8 preset)))
     (concat title " " (number-to-string w) "x" (number-to-string h) ", "
             (number-to-string fps) "fps, "
             (nth 5 preset))
@@ -175,15 +175,18 @@ FORCE - use t to update the list of devices."
                               :type 'capture-select-preset-btn)
           (insert "\n")
           (setq ind (+ ind 1))))
-      (if (capture-get-processes)
+      (when (capture-get-processes)
+        (insert "\nProcesses:    ")
+        (if (eq system-type 'windows-nt)
+            (insert "\n Terminate by Ctrl+C in a ffmpeg window\n")
           (progn
-            (insert "\nProcesses:    ")
             (insert-text-button "Stop all" :type 'capture-stop-btn)
             (insert "\n")
             (let ((index 0))
               (dolist (element (capture-get-processes))
                 (insert "   " element "\n"))
-              (setq index (+ index 1)))))
+              (setq index (+ index 1))))
+          ))
       (insert "\n")
 
       ;; Current settings + START
@@ -192,12 +195,12 @@ FORCE - use t to update the list of devices."
               "     ")
       (insert-text-button "Start" :type 'capture-start-btn)
       (insert "\nAudio: ")
-      (let ((audio (nth 7 capture-preset-current)))
+      (let ((audio (nth 8 capture-preset-current)))
         (insert (if (not audio) "No audio" (car audio)) "\n"))
 
       (insert "\nAudio:\n")
       (let ((index 0) devname title
-            (audio-rec-list (nth 7 capture-preset-current)))
+            (audio-rec-list (nth 8 capture-preset-current)))
         (dolist (element (append capture-audio-speakers
                                  capture-audio-microphones))
           (if (= (% index 2) 1)

@@ -39,9 +39,19 @@ Do not show any buffers."
   "Change desktop background to the FILENAME."
   (interactive)
   (if (file-exists-p filename)
-      (shell-command
-       (concat "gsettings set org.gnome.desktop.background picture-uri file://" filename))
+      (if (eq system-type 'windows-nt)
+          (message "Tell me how to change the wallpaper with a command line")
+          ;;(progn
+          ;;  (shell-command-to-string
+          ;;   (concat "reg add \"HKEY_CURRENT_USER\\Control Panel\\Desktop\""
+          ;;           " /v Wallpaper /t REG_SZ /d "
+          ;;           filename
+          ;;           " /f"))
+          ;;  (shell-command "RUNDLL32.EXE user32.dll,UpdatePerUserSystemParameters"))
+        (shell-command
+         (concat "gsettings set org.gnome.desktop.background picture-uri file://" filename)))
     (message (concat "No file: " filename))))
+;; (set-desktop-background "\\\\SERVER\\disk_3\\MY\\01.my_wallpaper\\1920\\wallpaper_dash.png")
 
 (defun capture-get-audio-devices-helper ()
   "Return an output of \"pactl list\" command."

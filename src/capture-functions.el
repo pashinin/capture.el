@@ -27,8 +27,7 @@
   (if (eq system-type 'windows-nt)
       (not (capture-have-ffmpeg))
     (and (not (capture-have-avconv))
-         (not (capture-have-ffmpeg)))
-  ))
+         (not (capture-have-ffmpeg)))))
 
 (defun capture-gen-avconv-audio-part (audio)
   "Return avconv (ffmpeg) cmd part based on AUDIO list."
@@ -40,7 +39,7 @@
           ;; -f dshow -i audio="Stereo Mix (Realtek High Defini"
           ;; :audio="Microphone Array (IDT High Defi"
           (if (eq system-type 'windows-nt)
-              (setq res (concat res ":audio=\"Microphone (Realtek High Defini\" "))
+              (setq res (concat res ":audio=\"" element "\" "))
             (setq res (concat res " -f pulse -i " (capture-get-audio-name-by-title element) " ")))
           )
         (if (> (length audio) 1)
@@ -49,13 +48,14 @@
           res))
       ""))
 
-(defun capture-gen-cmd (x y w h fps filename &optional audio)
+(defun capture-gen-cmd (x y w h fps filename &optional audio args)
   "Generate \"avconv\" command with it's parameters.
 X, Y - starting point,
 W, H - size of the capturing frame,
 FPS  - frames per second,
 FILENAME - temp filename to save video,
-AUDIO - a list of audio devices."
+AUDIO - a list of audio devices
+ARGS - additional arguments for ffmpeg (avconv)."
   (interactive)
   (if (not (eq system-type 'windows-nt))
       (concat "avconv "
@@ -76,24 +76,21 @@ AUDIO - a list of audio devices."
       (concat "ffmpeg -f dshow -i video=\"screen-capture-recorder\""
               (capture-gen-avconv-audio-part audio)
               " -r " (number-to-string fps)
-              " -s " (number-to-string w) "x" (number-to-string h)
-              ;;" -i :0.0+" (number-to-string x) "," (number-to-string y) " "
-              ;;" --crf 22"
-              " -rtbufsize 500000"
-              " -q 1"
-              " -preset ultrafast -threads 4"
-              " "
+              " -vf crop=" (number-to-string w) ":" (number-to-string h) ":"
+              (number-to-string x) ":" (number-to-string y)
+              " " (if args args) " "
               filename))))
-;; (capture-gen-cmd 0 0 100 100 15 "asd" (list "SB X-Fi Analog Mono"))
+;; (capture-gen-cmd 0 0 100 100 15 "asd" (list "SB X-Fi Analog Mono") "")
 
 (defun capture-filename (preset)
   "Generate an output filename for a PRESET."
   (interactive)
-  (let (fname
-        (ext (nth 5 preset)))
-    (setq fname (concat capture-video-temp-dir "capture_"
-                        (format-time-string "%Y_%m_%d_%H_%M_%S" (current-time)) "."
-                        ext))))
+  (let ((ext (nth 5 preset)) ddir)
+    (setq ddir capture-video-temp-dir)
+    (if (eq system-type 'windows-nt) (setq ddir capture-video-dest-dir))
+    (concat ddir "capture_"
+            (format-time-string "%Y_%m_%d_%H_%M_%S" (current-time)) "."
+            ext)))
 ;; (capture-filename capture-preset-current)
 
 (defun capture-gen-cmd-for-preset (preset filename)
@@ -107,10 +104,11 @@ Based on PRESET.  Write to FILENAME."
         (h (nth 3 preset))
         (fps (nth 4 preset))
         (ext (nth 5 preset))
-        (title (nth 6 preset))
-        (audio (nth 7 preset))  ; list of audio devices to record
-        (wallpaper (nth 8 preset)))
-    (setq cmd (capture-gen-cmd x y w h fps filename audio))
+        (args (nth 6 preset))
+        (title (nth 7 preset))
+        (audio (nth 8 preset))  ; list of audio devices to record
+        (wallpaper (nth 9 preset)))
+    (setq cmd (capture-gen-cmd x y w h fps filename audio args))
     ))
 ;; (capture-filename capture-preset-current)
 
@@ -127,6 +125,7 @@ Based on a preset under the cursor."
       ;;(clipboard-kill-ring-save (+ (line-beginning-position) 4) (line-end-position))
       )
     (message cmd)))
+;; (capture-current-preset-cmd)
 
 (defun capture-preset-under-cursor ()
   "Return a preset under the cursor."
@@ -137,6 +136,7 @@ Based on a preset under the cursor."
         preset)
     (setq num (- (string-to-number num) 1))
     (setq preset (nth num capture-presets)))))
+;; (capture-preset-under-cursor)
 
 (defun capture-start ()
   "Run capture process with settings in `capture-preset-current'."
@@ -149,25 +149,27 @@ Based on a preset under the cursor."
       (capture-before-capture))
   (let ((preset capture-preset-current))
     (let ((filename (capture-filename preset))
-          (wallpaper (nth 8 preset)))
+          (wallpaper (nth 9 preset)))
       (if (and wallpaper
                (file-exists-p  wallpaper))
           (set-desktop-background wallpaper))
       (capture-run-daemonized-command-no-buf
        (capture-gen-cmd-for-preset preset filename)))))
+;; (capture-gen-cmd-for-preset capture-preset-current "asd")
 
 (defun capture-presets-clear ()
   "Remove all presets from `capture-presets'."
   (interactive)
   (setq capture-presets (list)))
 
-(defun capture-add-preset (x y w h fps ext &optional title audio wallpaper)
+(defun capture-add-preset (x y w h fps ext &optional args title audio wallpaper)
   "Add a preset to `capture-presets'.
 x, Y - top left point of capturing frame
 W, H - width and height
-EXT  - filename extension (\"webm\")"
+EXT  - filename extension (\"webm\")
+ARGS - additional arguments for ffmpeg (avconv)"
   (interactive)
-  (add-to-list 'capture-presets (list x y w h fps ext title audio wallpaper)))
+  (add-to-list 'capture-presets (list x y w h fps ext args title audio wallpaper)))
 
 (defun capture-chomp (str)
   "Chomp leading and tailing symbols from STR."
@@ -253,7 +255,8 @@ EXT  - filename extension (\"webm\")"
     (if (fboundp 'capture-after-capture)
         (capture-after-capture))
     (sleep-for 1)
-    (capture-move-files files)
+    (if (not (eq system-type 'windows-nt))
+        (capture-move-files files))
     ))
 ;; (capture-stop-all)
 
