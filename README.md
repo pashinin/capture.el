@@ -33,10 +33,8 @@ Where:
 
 Optional parameters:
 
-    ""                    - additional arguments for ffmpeg
+    ""                    - additional arguments for ffmpeg (avconv)
     "1280px (no audio)"   - preset title
-    (list "Webcam C270 Analog Mono") - list of audio devices to record
-    (concat capture-background-path my-854-wallpaper) - wallpaper to set
 
 You can also define some triggers:
 
@@ -49,8 +47,8 @@ You can also define some triggers:
     (defun capture-after-capture ()
       "Run this function after we stopped capturing video."
       (interactive)
-      (set-desktop-background
-       (concat capture-background-path my-default-wallpaper)))
+      ;;(message "finished")
+      )
 
 ## Run
 
