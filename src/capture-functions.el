@@ -4,30 +4,13 @@
 
 (require 'capture-helpers)
 
-(defun capture-have-avconv ()
-  "Return t if avconv is installed."
-  (interactive)
-  (or (file-exists-p "/bin/avconv")
-      (file-exists-p "/usr/local/bin/avconv")
-      (file-exists-p "/usr/bin/avconv")))
-
-(defun capture-have-ffmpeg ()
-  "Return t if ffmpeg is installed."
-  (interactive)
-  (if (eq system-type 'windows-nt)
-      (file-exists-p (car (split-string (shell-command-to-string "where ffmpeg"))))
-    (or (file-exists-p "/bin/ffmpeg")
-        (file-exists-p "/usr/local/bin/ffmpeg")
-        (file-exists-p "/usr/bin/ffmpeg"))))
-;; (capture-have-ffmpeg)
-
 (defun capture-warning-no-program ()
   "Return t if no ffmpeg or avconv was found."
   (interactive)
   (if (eq system-type 'windows-nt)
-      (not (capture-have-ffmpeg))
-    (and (not (capture-have-avconv))
-         (not (capture-have-ffmpeg)))))
+      (not (executable-find "ffmpeg"))
+    (and (not (executable-find "avconv"))
+         (not (executable-find "ffmpeg")))))
 
 (defun capture-gen-avconv-audio-part (audio)
   "Return avconv (ffmpeg) cmd part based on AUDIO list."
@@ -35,9 +18,6 @@
   (if audio
       (let ((res ""))
         (dolist (element audio res)
-          ;;(concat "-i " (capture-get-audio-name-by-title (car audio)) " ")
-          ;; -f dshow -i audio="Stereo Mix (Realtek High Defini"
-          ;; :audio="Microphone Array (IDT High Defi"
           (if (eq system-type 'windows-nt)
               (setq res (concat res ":audio=\"" element "\" "))
             (setq res (concat res " -f pulse -i " (capture-get-audio-name-by-title element) " ")))
@@ -65,10 +45,7 @@ ARGS - additional arguments for ffmpeg (avconv)."
               " -r " (number-to-string fps)
               " -s " (number-to-string w) "x" (number-to-string h)
               " -i :0.0+" (number-to-string x) "," (number-to-string y) " "
-              " -q 1 "
-              " -b 8500000 "
-              " -bt 8000000"
-              " -preset ultrafast -threads 4"
+              " " (if args args) " "
               " -y " filename)
     (progn
       ;; -loglevel quiet
