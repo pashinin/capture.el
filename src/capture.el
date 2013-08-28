@@ -57,6 +57,8 @@
   (kill-all-local-variables)
   (setq mode-name "capture")
   (use-local-map capture-mode-map)
+  (if (not capture-presets)
+      (setq capture-presets capture-presets-standard))
   (capture-update-buffer))
 
 (defun capture-run-mode ()

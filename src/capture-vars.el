@@ -27,8 +27,8 @@
   :group 'capture-vars)
 
 (defcustom capture-presets-standard
-  (list (list 0 0 854 480 15 "webm" "Youtube")
-        (list 0 0 1280 720 15 "webm" "Youtube2"))
+  (list (list 0 0 854  480 15 "webm" "" "My video"  nil nil)
+        (list 0 0 1280 720 15 "webm" "" "Bigger video" nil nil))
   "Sample presets for capture-mode."
   :group 'capture-vars)
 
