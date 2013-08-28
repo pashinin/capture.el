@@ -1,4 +1,4 @@
-;;; capture.el --- easy screencasting using the avconv program
+;;; capture.el --- screencasting with "avconv" or "ffmpeg"
 ;;
 ;; Copyright (C) 2013 Sergey Pashinin
 ;; Author: Sergey Pashinin <sergey at pashinin dot com>
