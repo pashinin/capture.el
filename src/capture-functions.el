@@ -38,7 +38,10 @@ AUDIO - a list of audio devices
 ARGS - additional arguments for ffmpeg (avconv)."
   (interactive)
   (if (not (eq system-type 'windows-nt))
-      (concat "avconv "
+      (concat (if (executable-find "avconv")
+                  "avconv"
+                "ffmpeg")
+              " "
               (capture-gen-avconv-audio-part audio)
               " -show_region 1"
               " -f x11grab "
