@@ -8,6 +8,8 @@ It is an Emacs extension to record video from dekstop.
     # some programs:
     sudo apt-get install libav-tools
 
+If on Windows - install ffmpeg from here - http://ffmpeg.zeranoe.com/builds/
+
 ## Configuration
 
     (require 'capture)
